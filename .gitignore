@@ -1,0 +1,35 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Trained model files (large - regenerated on first run)
+forecaster_model.joblib
+forecaster_model_metrics.joblib
+forecaster_model_importances.csv
+
+# Large data files (regenerated on first run)
+historical_sales.csv
+
+# IDE / Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node
+node_modules/
+package-lock.json

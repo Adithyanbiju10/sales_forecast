@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PredictFlow // Retail Demand Forecasting Engine</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Panel -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <div class="logo">
+                    <span class="logo-accent">⚡</span> PredictFlow
+                </div>
+                <div class="tagline">Retail Demand Intelligence</div>
+            </div>
+
+            <div class="control-group">
+                <label for="store-select">Select Store</label>
+                <div class="select-wrapper">
+                    <select id="store-select">
+                        <option value="" disabled selected>Loading stores...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="product-select">Select Product</label>
+                <div class="select-wrapper">
+                    <select id="product-select">
+                        <option value="" disabled selected>Loading products...</option>
+                    </select>
+                </div>
+                <div id="product-meta" class="product-meta"></div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="nav-links">
+                <button class="nav-btn active" data-tab="forecast-tab">
+                    <span class="btn-icon">📈</span> Forecast Dashboard
+                </button>
+                <button class="nav-btn" data-tab="simulator-tab">
+                    <span class="btn-icon">🔮</span> Scenario Simulator
+                </button>
+                <button class="nav-btn" data-tab="model-tab">
+                    <span class="btn-icon">⚙️</span> Model Health & Lints
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="pulse-dot green"></span>
+                    <span class="status-text">Backend Connected</span>
+                </div>
+                <div class="system-time" id="system-time">--:--:--</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Section -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h1 id="page-title">Demand Forecasting</h1>
+                    <p id="page-subtitle">Historical insights & predictive pipeline projections</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="refresh-data-btn">
+                        <span class="icon">🔄</span> Reload Data
+                    </button>
+                    <button class="btn btn-primary" id="quick-train-btn">
+                        <span class="icon">🚀</span> Train Model
+                    </button>
+                </div>
+            </header>
+
+            <!-- Notification Banner (Dynamic) -->
+            <div id="notification-banner" class="notification-banner hidden">
+                <span class="notification-icon">ℹ️</span>
+                <span class="notification-text">Model training triggered successfully!</span>
+                <button class="notification-close" onclick="closeNotification()">×</button>
+            </div>
+
+            <!-- TAB 1: Forecast Dashboard -->
+            <div id="forecast-tab" class="tab-content active">
+                <!-- KPI Row -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Average Historical Demand</span>
+                            <span class="kpi-icon">📊</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-avg-hist">-</div>
+                        <div class="kpi-desc">Daily average (past 30 days)</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Projected Peak Demand</span>
+                            <span class="kpi-icon">🔥</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-peak-forecast">-</div>
+                        <div class="kpi-desc" id="kpi-peak-date">In next 14 days</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Total Expected Volume</span>
+                            <span class="kpi-icon">📦</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-volume">-</div>
+                        <div class="kpi-desc">Forecasted sales over 14 days</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Base Elasticity Score</span>
+                            <span class="kpi-icon">🎯</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-elasticity">-</div>
+                        <div class="kpi-desc">Price sensitivity indicator</div>
+                    </div>
+                </div>
+
+                <!-- Main Chart Card -->
+                <div class="card chart-card">
+                    <div class="chart-card-header-row">
+                        <div class="chart-header-left">
+                            <h2 class="card-title">14-Day Demand Forecast</h2>
+                            <p class="card-subtitle">Actual sales + recursive ML forecast + confidence band</p>
+                        </div>
+                        <div class="chart-header-right">
+                            <!-- Historical range toggle -->
+                            <div class="range-toggle" id="range-toggle">
+                                <button class="range-btn" data-days="7" id="range-7">7D</button>
+                                <button class="range-btn active" data-days="30" id="range-30">30D</button>
+                                <button class="range-btn" data-days="90" id="range-90">90D</button>
+                            </div>
+                            <!-- Legend -->
+                            <div class="chart-legend-custom">
+                                <span class="legend-item"><span class="legend-color hist"></span> Actual</span>
+                                <span class="legend-item"><span class="legend-color fc"></span> Forecast</span>
+                                <span class="legend-item"><span class="legend-color band"></span> Band</span>
+                            </div>
+                            <!-- Export CSV -->
+                            <button class="btn-ghost" id="export-csv-btn">
+                                ⬇ Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="forecast-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Inventory Reorder Recommendation Card -->
+                <div class="inventory-card" id="inventory-card">
+                    <div class="inventory-card-header">
+                        <span class="inventory-card-title">📦 Inventory Reorder Recommendation</span>
+                        <span class="inventory-card-icon">🤖</span>
+                    </div>
+                    <div class="inventory-grid">
+                        <div class="inventory-stat">
+                            <span class="inventory-stat-label">Forecast Volume</span>
+                            <span class="inventory-stat-value" id="inv-forecast-vol">—</span>
+                            <span class="inventory-stat-sub">units / 14 days</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="inventory-stat-label">Daily Avg Demand</span>
+                            <span class="inventory-stat-value" id="inv-daily-avg">—</span>
+                            <span class="inventory-stat-sub">units / day</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="inventory-stat-label">Safety Stock</span>
+                            <span class="inventory-stat-value warn" id="inv-safety-stock">—</span>
+                            <span class="inventory-stat-sub">buffer units</span>
+                        </div>
+                        <div class="inventory-stat">
+                            <span class="inventory-stat-label">Reorder Qty</span>
+                            <span class="inventory-stat-value" id="inv-reorder-qty">—</span>
+                            <span class="inventory-stat-sub">units to order</span>
+                        </div>
+                    </div>
+                    <div class="inventory-safety-row">
+                        <span class="inventory-safety-label">Safety Stock Days:</span>
+                        <input type="range" class="safety-stock-slider" id="safety-stock-slider" min="1" max="14" value="3" step="1">
+                        <span class="safety-stock-val" id="safety-stock-val">3d</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Scenario Simulator -->
+            <div id="simulator-tab" class="tab-content">
+                <div class="simulator-grid">
+                    <!-- Controls Card -->
+                    <div class="card simulator-controls">
+                        <div class="card-header">
+                            <h2 class="card-title">Scenario Parameters</h2>
+                            <p class="card-subtitle">Adjust market parameters to observe forecast elasticity</p>
+                        </div>
+                        <div class="card-body">
+                            <!-- Price Adjust Slider -->
+                            <div class="slider-group">
+                                <div class="slider-labels">
+                                    <span class="slider-name">Price Adjustment</span>
+                                    <span class="slider-val" id="price-slider-val">0%</span>
+                                </div>
+                                <input type="range" id="price-slider" min="-50" max="50" value="0" step="5">
+                                <div class="slider-helper">Negative values represent discounts/markdowns.</div>
+                            </div>
+
+                            <!-- Promotion Toggle -->
+                            <div class="form-group">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="promo-toggle">
+                                    <span class="slider round"></span>
+                                    <span class="toggle-label">Active Promotion Event</span>
+                                </label>
+                                <p class="helper-text">Applies promotional campaign multiplier to baseline demand.</p>
+                            </div>
+
+                            <!-- Temperature Slider -->
+                            <div class="slider-group">
+                                <div class="slider-labels">
+                                    <span class="slider-name">Weather Temperature (°C)</span>
+                                    <span class="slider-val" id="temp-slider-val">22°C</span>
+                                </div>
+                                <input type="range" id="temp-slider" min="0" max="40" value="22" step="1">
+                                <div class="slider-helper">Directly impacts products like Soft Drinks and Hot Coffee.</div>
+                            </div>
+
+                            <!-- Precipitation Slider -->
+                            <div class="slider-group">
+                                <div class="slider-labels">
+                                    <span class="slider-name">Precipitation Index</span>
+                                    <span class="slider-val" id="precip-slider-val">0.0</span>
+                                </div>
+                                <input type="range" id="precip-slider" min="0" max="100" value="0" step="10">
+                                <div class="slider-helper">0.0 is dry weather; 1.0 represents heavy continuous rainfall.</div>
+                            </div>
+
+                            <!-- Holiday Toggle -->
+                            <div class="form-group">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="holiday-toggle">
+                                    <span class="slider round"></span>
+                                    <span class="toggle-label">Is Holiday Period</span>
+                                </label>
+                                <p class="helper-text">Simulates high traffic peak similar to Black Friday or Christmas.</p>
+                            </div>
+
+                            <button class="btn btn-primary btn-block" id="run-simulation-btn">
+                                <span class="icon">🔮</span> Compute Demand Shift
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Output Graph Card -->
+                    <div class="card simulator-results">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Scenario Forecast Overlay</h2>
+                                <p class="card-subtitle">Compare baseline predictions against your simulated parameters</p>
+                            </div>
+                            <div class="chart-legend-custom">
+                                <span class="legend-item"><span class="legend-color fc"></span> Standard Forecast</span>
+                                <span class="legend-item"><span class="legend-color sim"></span> Simulated Scenario</span>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="simulator-chart"></canvas>
+                        </div>
+                        <div class="simulation-impact-box" id="simulation-impact-box">
+                            <div class="impact-label">Expected Net Shift:</div>
+                            <div class="impact-value positive" id="impact-percentage">+0.0%</div>
+                            <div class="impact-desc" id="impact-description">Same volume expected.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Model Health & Metrics -->
+            <div id="model-tab" class="tab-content">
+                <div class="model-metrics-grid">
+                    <!-- Metrics Summary Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Model Performance & Calibration</h2>
+                            <p class="card-subtitle">Evaluation metrics calculated on time-based validation subset</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="metrics-list">
+                                <div class="metric-row">
+                                    <span class="metric-label">Root Mean Squared Error (RMSE)</span>
+                                    <span class="metric-badge" id="metric-rmse">-</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Mean Absolute Error (MAE)</span>
+                                    <span class="metric-badge" id="metric-mae">-</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Mean Abs. Percentage Error (MAPE)</span>
+                                    <span class="metric-badge gold" id="metric-mape">-</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Coefficient of Determination (R²)</span>
+                                    <span class="metric-badge emerald" id="metric-r2">-</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Training Size</span>
+                                    <span class="metric-val" id="metric-train-size">- records</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Validation Size</span>
+                                    <span class="metric-val" id="metric-val-size">- records</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Model Pipeline Type</span>
+                                    <span class="metric-val">RandomForestRegressor (sklearn)</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">Last Training Update</span>
+                                    <span class="metric-val" id="metric-timestamp">-</span>
+                                </div>
+                            </div>
+
+                            <!-- Baseline Comparison -->
+                            <div class="baseline-comparison-row">
+                                <span class="baseline-comparison-label">🔬 Model vs 7-Day Lag Baseline</span>
+                                <span class="baseline-chip" id="baseline-chip">—</span>
+                            </div>
+                            
+                            <div class="action-box">
+                                <p>Model predictions degrade as market factors drift. Re-run model training to refit and update feature importances.</p>
+                                <button class="btn btn-primary btn-block" id="train-model-action-btn">
+                                    <span class="icon">⚙️</span> Run Pipeline Re-training
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Importance Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Feature Importances</h2>
+                            <p class="card-subtitle">Relative contribution of engineered features to the target forecast</p>
+                        </div>
+                        <div class="chart-container importance">
+                            <canvas id="importance-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
